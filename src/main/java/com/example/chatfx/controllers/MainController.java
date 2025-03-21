@@ -1,14 +1,21 @@
-package com.example.chatfx;
+package com.example.chatfx.controllers;
 
+import com.example.chatfx.HelloApplication;
+import com.example.chatfx.ServerHandler;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.stage.Stage;
 
 public class MainController {
     private ServerHandler serverHandler;
 
     public MainController() {
         serverHandler = new ServerHandler();
+//        authorize();
 //        serverHandler.connect();
 //        startListening();
     }
@@ -54,5 +61,23 @@ public class MainController {
         });
         t.setDaemon(true);
         t.start();
+    }
+
+    private void authorize() {
+        try {
+            // Создаем новое окно (Stage)
+            FXMLLoader loader = new FXMLLoader(HelloApplication.class.getResource("authorization-view.fxml"));
+            Parent root = loader.load();
+
+            Stage newStage = new Stage();
+            newStage.setTitle("Авторизация");
+
+            Scene scene = new Scene(root, 300, 200);
+            newStage.setScene(scene);
+
+            newStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
