@@ -13,21 +13,23 @@ import javafx.stage.Stage;
 public class MainController {
     private ServerHandler serverHandler;
 
-    public MainController() {
-        serverHandler = new ServerHandler();
-//        authorize();
-//        serverHandler.connect();
-//        startListening();
-    }
+    private Thread messageReader;
 
     @FXML
     private TextArea output_ta;
     @FXML
     private TextField input_tf;
 
+    public MainController() {
+        serverHandler = ServerHandler.getInstance();
+//        serverHandler.connect();
+//        startListening();
+    }
+
     // Метод для извлечения сообщения и его отправки
     @FXML
     private void onSendButtonClick() {
+        authorize();
         sendMessage();
     }
 
@@ -42,7 +44,7 @@ public class MainController {
 
     // тут будем прослушивать сообщения от сервера
     private void startListening() {
-        Thread t = new Thread(() -> {
+        messageReader = new Thread(() -> {
             String receivedMessage;
 
             while (serverHandler.isConnected()) {
@@ -59,13 +61,13 @@ public class MainController {
                 }
             }
         });
-        t.setDaemon(true);
-        t.start();
+        messageReader.setDaemon(true);
+        messageReader.start();
     }
 
     private void authorize() {
         try {
-            // Создаем новое окно (Stage)
+            // Создаем новое окно
             FXMLLoader loader = new FXMLLoader(HelloApplication.class.getResource("authorization-view.fxml"));
             Parent root = loader.load();
 
@@ -75,7 +77,9 @@ public class MainController {
             Scene scene = new Scene(root, 300, 200);
             newStage.setScene(scene);
 
-            newStage.show();
+            messageReader.wait();//????????????????????????????????????
+            newStage.showAndWait();
+            messageReader.run();//????????????????????????????????????
         } catch (Exception e) {
             e.printStackTrace();
         }

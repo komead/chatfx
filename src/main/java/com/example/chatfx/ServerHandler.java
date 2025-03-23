@@ -13,6 +13,14 @@ public class ServerHandler {
     private final String ip = "localhost";
     private final int port = 9090;
 
+    private static class ServerHandlerHolder {
+        private static final ServerHandler instance = new ServerHandler();
+    }
+
+    public static ServerHandler getInstance() {
+        return ServerHandlerHolder.instance;
+    }
+
     public void connect() {
         try {
             socket = new Socket(ip, port);
