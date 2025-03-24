@@ -1,6 +1,7 @@
 module com.example.chatfx {
     requires javafx.controls;
     requires javafx.fxml;
+    requires com.google.gson;
 
 
     opens com.example.chatfx to javafx.fxml;

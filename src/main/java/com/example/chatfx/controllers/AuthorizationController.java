@@ -23,13 +23,7 @@ public class AuthorizationController {
 
     @FXML
     private void onLoginButtonClick() {
-        if (!serverHandler.isConnected()) {
-            // Обработать отсутствие подключения
-        }
-
-        if (login_tf.getText().isEmpty() || password_tf.getText().isEmpty()) {
-            // Обработать ситуацию с пустыми полями
-        }
+        checkProblems();
 
         HashMap<String, String> data = new HashMap<>();
 
@@ -40,18 +34,12 @@ public class AuthorizationController {
         serverHandler.sendMessage(gson.toJson(data));
 
         // Нужно обработать ответ
-        serverHandler.checkMessage();
+//        serverHandler.checkMessage();
     }
 
     @FXML
     private void onRegisterButtonClick() {
-        if (!serverHandler.isConnected()) {
-            // Обработать отсутствие подключения
-        }
-
-        if (login_tf.getText().isEmpty() || password_tf.getText().isEmpty()) {
-            // Обработать ситуацию с пустыми полями
-        }
+        checkProblems();
 
         HashMap<String, String> data = new HashMap<>();
 
@@ -62,6 +50,20 @@ public class AuthorizationController {
         serverHandler.sendMessage(gson.toJson(data));
 
         // Нужно обработать ответ
-        serverHandler.checkMessage();
+//        serverHandler.checkMessage();
+    }
+
+    private boolean checkProblems() {
+        if (!serverHandler.isConnected()) {
+            // Обработать отсутствие подключения
+            return true;
+        }
+
+        if (login_tf.getText().isEmpty() || password_tf.getText().isEmpty()) {
+            // Обработать ситуацию с пустыми полями
+            return true;
+        }
+
+        return false;
     }
 }
