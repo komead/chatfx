@@ -6,29 +6,66 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
+import java.io.IOException;
+
 public class MainController {
-    private ServerHandler serverHandler;
-
-    private Thread messageReader;
-
     @FXML
     private TextArea output_ta;
     @FXML
     private TextField input_tf;
+    @FXML
+    private Label info;
 
-    public MainController() {
+    private ServerHandler serverHandler;
+
+    private Thread messageReader = new Thread(() -> {
+        String receivedMessage = "";
+
+        while (serverHandler.isConnected()) {
+
+            try {
+                receivedMessage = serverHandler.checkMessage();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            if (!receivedMessage.isEmpty()) {
+                output_ta.appendText(receivedMessage + "\n");
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    });
+
+    @FXML
+    public void initialize() {
         serverHandler = ServerHandler.getInstance();
-        serverHandler.connect();
-        startListening();
+        try {
+            serverHandler.connect();
+
+            // Начинаем прослушивать сообщения от сервера
+            messageReader.setDaemon(true);
+            messageReader.start();
+        } catch (IOException e) {
+            info.setText("Не удалось установить соединение с сервером");
+        }
     }
 
     // Метод для извлечения сообщения и его отправки
     @FXML
     private void onSendButtonClick() {
+        if (!serverHandler.isConnected()) {
+
+        }
         authorize();
         sendMessage();
     }
@@ -40,29 +77,6 @@ public class MainController {
             output_ta.appendText(input_tf.getText() + "\n");
             input_tf.setText("");
         }
-    }
-
-    // тут будем прослушивать сообщения от сервера
-    private void startListening() {
-        messageReader = new Thread(() -> {
-            String receivedMessage;
-
-            while (serverHandler.isConnected()) {
-                receivedMessage = serverHandler.checkMessage();
-
-                if (!receivedMessage.isEmpty()) {
-                    output_ta.appendText(receivedMessage + "\n");
-                }
-
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        messageReader.setDaemon(true);
-        messageReader.start();
     }
 
     private void authorize() {

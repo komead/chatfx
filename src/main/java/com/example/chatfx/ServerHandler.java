@@ -21,23 +21,15 @@ public class ServerHandler {
         return ServerHandlerHolder.instance;
     }
 
-    public void connect() {
-        try {
-            socket = new Socket(ip, port);
-            inputStream = new DataInputStream(socket.getInputStream());
-            outputStream = new DataOutputStream(socket.getOutputStream());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void connect() throws IOException {
+        socket = new Socket(ip, port);
+        inputStream = new DataInputStream(socket.getInputStream());
+        outputStream = new DataOutputStream(socket.getOutputStream());
     }
 
-    public String checkMessage() {
+    public String checkMessage() throws IOException {
         String receivedMessage = "";
-        try {
-            receivedMessage = inputStream.readUTF();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        receivedMessage = inputStream.readUTF();
 
         return receivedMessage;
     }
@@ -61,6 +53,6 @@ public class ServerHandler {
     }
 
     public boolean isConnected() {
-        return socket.isConnected();
+        return socket != null && socket.isConnected();
     }
 }
