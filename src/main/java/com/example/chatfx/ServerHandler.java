@@ -3,6 +3,7 @@ package com.example.chatfx;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.Socket;
 
 public class ServerHandler {
@@ -37,9 +38,14 @@ public class ServerHandler {
 
     public void finish() {
         try {
-            inputStream.close();
-            outputStream.close();
-            socket.close();
+            if (inputStream != null)
+                inputStream.close();
+
+            if (outputStream != null)
+                outputStream.close();
+
+            if (socket != null)
+                socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -53,8 +59,19 @@ public class ServerHandler {
         }
     }
 
-    public boolean isConnected() {
-        return socket != null && socket.isConnected();
+    public boolean isConnected() throws ConnectException {
+        if (socket == null)
+            throw new NullPointerException("Сервер недоступен");
+
+        if (socket.isClosed())
+            throw new ConnectException("Нет соединения с сервером");
+
+        return true;
+    }
+
+    public void reconnect() throws IOException {
+        finish();
+        connect();
     }
 
     public boolean isAuthorized() {

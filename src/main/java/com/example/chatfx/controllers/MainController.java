@@ -2,6 +2,7 @@ package com.example.chatfx.controllers;
 
 import com.example.chatfx.HelloApplication;
 import com.example.chatfx.ServerHandler;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -12,6 +13,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.net.ConnectException;
 
 public class MainController {
     @FXML
@@ -21,21 +23,36 @@ public class MainController {
     @FXML
     private Label info;
 
-    private ServerHandler serverHandler;
+    private ServerHandler serverHandler = ServerHandler.getInstance();
+    private volatile boolean pause = true;
 
-    private Thread messageReader = new Thread(() -> {
+    private final Thread messageReader = new Thread(() -> {
         String receivedMessage = "";
 
-        while (serverHandler.isConnected()) {
+        while (true) {
+            // На случай, если нужно где-то приостановить поток
+            if (pause) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                continue;
+            }
+
+            if (!checkConnection())
+                continue;
 
             try {
                 receivedMessage = serverHandler.checkMessage();
             } catch (IOException e) {
-                e.printStackTrace();
+                info.setText("Ошибка подключения к серверу");
             }
 
             if (!receivedMessage.isEmpty()) {
-                output_ta.appendText(receivedMessage + "\n");
+                String finalReceivedMessage = receivedMessage;
+                output_ta.appendText(finalReceivedMessage + "\n");
+                receivedMessage = "";
             }
 
             try {
@@ -46,27 +63,32 @@ public class MainController {
         }
     });
 
+    public MainController() {
+        // Запускаем поток для прослушивания сообщений от сервера
+        messageReader.setDaemon(true);
+        messageReader.start();
+    }
+
     @FXML
     public void initialize() {
-        serverHandler = ServerHandler.getInstance();
         try {
             serverHandler.connect();
-
-            // Начинаем прослушивать сообщения от сервера
-            messageReader.setDaemon(true);
-            messageReader.start();
         } catch (IOException e) {
             info.setText("Не удалось установить соединение с сервером");
         }
+
+        authorize();
     }
 
     // Метод для извлечения сообщения и его отправки
     @FXML
     private void onSendButtonClick() {
-        if (!serverHandler.isConnected()) {
+        if (!checkConnection())
+            return;
 
-        }
-        authorize();
+        if (!serverHandler.isAuthorized())
+            authorize();
+
         sendMessage();
     }
 
@@ -79,6 +101,9 @@ public class MainController {
         }
     }
 
+    /**
+     * Метод открывает окно авторизации, приостанавливая поток чтения сообщений
+     */
     private void authorize() {
         try {
             // Создаем новое окно
@@ -91,11 +116,28 @@ public class MainController {
             Scene scene = new Scene(root, 300, 200);
             newStage.setScene(scene);
 
-//            messageReader.wait();//????????????????????????????????????
+            pause = true;
             newStage.showAndWait();
-//            messageReader.run();//????????????????????????????????????
+            pause = false;
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Метод возвращает true при наличии соединения
+     */
+    private boolean checkConnection() {
+        try {
+            if (serverHandler.isConnected()) {
+                info.setText("");
+            }
+        } catch (NullPointerException | ConnectException e) {
+            if (info != null)
+                info.setText(e.getMessage());
+            return false;
+        }
+
+        return true;
     }
 }

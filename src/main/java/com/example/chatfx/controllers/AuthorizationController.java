@@ -6,8 +6,10 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.HashMap;
 
 public class AuthorizationController {
@@ -33,7 +35,7 @@ public class AuthorizationController {
 
         HashMap<String, String> data = new HashMap<>();
 
-        data.put("code", "/login");
+        data.put("code", "login");
         data.put("username", login_tf.getText());
         data.put("password", password_tf.getText());
 
@@ -51,7 +53,7 @@ public class AuthorizationController {
 
         HashMap<String, String> data = new HashMap<>();
 
-        data.put("code", "/register");
+        data.put("code", "register");
         data.put("username", login_tf.getText());
         data.put("password", password_tf.getText());
 
@@ -62,15 +64,20 @@ public class AuthorizationController {
     }
 
     private boolean checkProblems() {
-        if (!serverHandler.isConnected()) {
-            info.setText("Нет соединения с сервером");
-            // Обработать отсутствие подключения
+        try {
+            if (serverHandler.isConnected()) {
+                info.setText("");
+            }
+        } catch (NullPointerException e) {
+            info.setText(e.getMessage());
+            return true;
+        } catch (ConnectException e) {
+            info.setText(e.getMessage());
             return true;
         }
 
         if (login_tf.getText().isEmpty() || password_tf.getText().isEmpty()) {
             info.setText("Не введён логин или пароль!");
-            // Обработать ситуацию с пустыми полями
             return true;
         }
 
@@ -87,8 +94,7 @@ public class AuthorizationController {
         try {
             answer = serverHandler.checkMessage();
         } catch (IOException e) {
-            // Нужно обработать ошибку получения ответа
-            e.printStackTrace();
+            info.setText("Потеряно соединение с сервером");
         }
 
         if (answer.isEmpty())
@@ -99,7 +105,8 @@ public class AuthorizationController {
         switch (data.get("code")) {
             case "ok":
                 serverHandler.setAuthorized(true);
-                // Закрыть окно
+                Stage stage = (Stage) info.getScene().getWindow();
+                stage.close();
                 break;
             case "deny":
                 info.setText(data.get("body"));
