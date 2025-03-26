@@ -39,7 +39,7 @@ public class AuthorizationController {
 
         serverHandler.sendMessage(gson.toJson(data));
 
-        // Ждём ответ от сервера
+        info.setText("Ждём ответ от сервера...");
         checkMessage();
     }
 
@@ -57,7 +57,7 @@ public class AuthorizationController {
 
         serverHandler.sendMessage(gson.toJson(data));
 
-        // Ждём ответ от сервера
+        info.setText("Ждём ответ от сервера...");
         checkMessage();
     }
 
@@ -77,6 +77,11 @@ public class AuthorizationController {
         return false;
     }
 
+    /**
+     * Данный метод ожидает ответ от сервера.
+     * При одобрении сервером регистрации или входа закрывается окно авторизации.
+     * При отказе сервером выводится информация о проблеме
+     */
     private void checkMessage() {
         String answer = "";
         try {
@@ -89,12 +94,16 @@ public class AuthorizationController {
         if (answer.isEmpty())
             return;
 
-        if (answer.startsWith("/ok")) {
-            // Обработать одобрение авторизации
-        }
+        HashMap<String, String> data = gson.fromJson(answer, HashMap.class);
 
-        if (answer.startsWith("/deny")) {
-            // Обработать отказ в доступе
+        switch (data.get("code")) {
+            case "ok":
+                serverHandler.setAuthorized(true);
+                // Закрыть окно
+                break;
+            case "deny":
+                info.setText(data.get("body"));
+                break;
         }
     }
 }
