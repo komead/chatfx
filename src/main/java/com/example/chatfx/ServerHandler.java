@@ -14,6 +14,7 @@ public class ServerHandler {
     private final String ip = "localhost";
     private final int port = 9090;
     private boolean authorized = false;
+    private String username;
 
     private static class ServerHandlerHolder {
         private static final ServerHandler instance = new ServerHandler();
@@ -80,5 +81,13 @@ public class ServerHandler {
 
     public void setAuthorized(boolean authorized) {
         this.authorized = authorized;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

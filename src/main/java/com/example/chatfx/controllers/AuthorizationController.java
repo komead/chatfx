@@ -42,6 +42,7 @@ public class AuthorizationController {
         serverHandler.sendMessage(gson.toJson(data));
 
         info.setText("Ждём ответ от сервера...");
+        serverHandler.setUsername(login_tf.getText());
         checkMessage();
     }
 
@@ -60,6 +61,7 @@ public class AuthorizationController {
         serverHandler.sendMessage(gson.toJson(data));
 
         info.setText("Ждём ответ от сервера...");
+        serverHandler.setUsername(login_tf.getText());
         checkMessage();
     }
 

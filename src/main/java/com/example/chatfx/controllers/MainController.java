@@ -2,7 +2,7 @@ package com.example.chatfx.controllers;
 
 import com.example.chatfx.HelloApplication;
 import com.example.chatfx.ServerHandler;
-import javafx.application.Platform;
+import com.google.gson.Gson;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -14,6 +14,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.util.HashMap;
 
 public class MainController {
     @FXML
@@ -25,9 +26,14 @@ public class MainController {
 
     private ServerHandler serverHandler = ServerHandler.getInstance();
     private volatile boolean pause = true;
+    private Gson gson = new Gson();
 
+    /**
+     * Поток, который слушает сообщения от сервера, обрабатывает их и выводит их на экран
+     */
     private final Thread messageReader = new Thread(() -> {
-        String receivedMessage = "";
+        String receivedMessage;
+        HashMap<String, String> map;
 
         while (true) {
             // На случай, если нужно где-то приостановить поток
@@ -39,20 +45,31 @@ public class MainController {
                 }
                 continue;
             }
-
+            // Если нет соединения с сервером, то пропускаем чтение сообщения
             if (!checkConnection())
                 continue;
 
             try {
                 receivedMessage = serverHandler.checkMessage();
+                map = gson.fromJson(receivedMessage, HashMap.class);
+
+                if (map.get("code").equals("message")) {
+                    String prefix;
+
+                    if (map.get("sender").equals(serverHandler.getUsername())) {
+                        prefix = "You: ";
+                    } else {
+                        prefix = map.get("sender") + ": ";
+                    }
+
+                    if (map.get("receiver").equals("all")) {
+                        output_ta.appendText(prefix + receivedMessage + "\n");
+                    } else {
+
+                    }
+                }
             } catch (IOException e) {
                 info.setText("Ошибка подключения к серверу");
-            }
-
-            if (!receivedMessage.isEmpty()) {
-                String finalReceivedMessage = receivedMessage;
-                output_ta.appendText(finalReceivedMessage + "\n");
-                receivedMessage = "";
             }
 
             try {
@@ -80,7 +97,9 @@ public class MainController {
         authorize();
     }
 
-    // Метод для извлечения сообщения и его отправки
+    /**
+     * Метод реагирующий на нажатие кнопки "Отправить"
+     */
     @FXML
     private void onSendButtonClick() {
         if (!checkConnection())
@@ -89,14 +108,22 @@ public class MainController {
         if (!serverHandler.isAuthorized())
             authorize();
 
-        sendMessage();
+        sendMessage("all");
     }
 
-    private void sendMessage() {
+    /**
+     * Метод извлекает текст из текстового поля ввода, чистит поле и отправляет этот текст на сервер.
+     * В качестве параметра {@code receiver} передаётся получатель сообщения.
+     */
+    private void sendMessage(String receiver) {
         if (!input_tf.getText().isEmpty()) {
-            serverHandler.sendMessage(input_tf.getText());
+            HashMap<String, String> data = new HashMap<>();
+            data.put("code", "message");
+            data.put("text", input_tf.getText());
+            data.put("receiver", receiver);
 
-            output_ta.appendText(input_tf.getText() + "\n");
+            serverHandler.sendMessage(gson.toJson(data));
+
             input_tf.setText("");
         }
     }
