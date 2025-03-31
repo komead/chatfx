@@ -8,6 +8,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
@@ -23,6 +24,8 @@ public class MainController {
     private TextField input_tf;
     @FXML
     private Label info;
+    @FXML
+    private ListView<String> users_lv;
 
     private ServerHandler serverHandler = ServerHandler.getInstance();
     private volatile boolean pause = true;
@@ -67,6 +70,9 @@ public class MainController {
                     } else {
 
                     }
+                } else if (map.get("code").equals("usersList")) {
+                    String[] users = map.get("users").split("\\s");
+                    users_lv.getItems().addAll(users);
                 }
             } catch (IOException e) {
                 info.setText("Ошибка подключения к серверу");
