@@ -94,6 +94,8 @@ public class MainController {
 
     @FXML
     public void initialize() {
+        setListeners();
+
         try {
             serverHandler.connect();
         } catch (IOException e) {
@@ -114,23 +116,66 @@ public class MainController {
         if (!serverHandler.isAuthorized())
             authorize();
 
-        sendMessage("all");
+        if (input_tf.getText().charAt(0) == '/') {
+            String[] arr = input_tf.getText().split("\\s", 2);
+            String[] str = arr[0].substring(1, arr.length - 1).split(",");
+
+            if (str[0].isEmpty()) {
+                str[0] = arr[0].substring(1, arr[0].length() - 1);
+            }
+
+            for (String s : str)
+                sendMessage(s, arr[1]);
+        } else {
+            sendMessage("all", input_tf.getText());
+        }
+
+        input_tf.setText("");
+    }
+
+    private void setListeners() {
+        // Действие при нажатии на элемент списка
+        users_lv.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                // Извлечение значения элемента, на который нажали
+                String selectedItem = users_lv.getSelectionModel().getSelectedItem();
+
+                if (selectedItem != null) {
+                    info.setText("Выбран: " + selectedItem);
+                    StringBuilder msg = new StringBuilder(input_tf.getText());
+
+                    if (msg.isEmpty() || msg.charAt(0) != '/') {
+                        msg.insert(0, "/ ");
+                    }
+
+                    String[] arr = msg.toString().split("\\s", 2);
+                    if (!arr[0].contains(selectedItem)) {
+                        arr[0] += selectedItem + ',';
+                    }
+
+                    msg.setLength(0);
+                    for (String s : arr) {
+                        msg.append(s + ' ');
+                    }
+                    input_tf.setText(msg.toString());
+                }
+            }
+        });
     }
 
     /**
      * Метод извлекает текст из текстового поля ввода, чистит поле и отправляет этот текст на сервер.
      * В качестве параметра {@code receiver} передаётся получатель сообщения.
      */
-    private void sendMessage(String receiver) {
-        if (!input_tf.getText().isEmpty()) {
+    private void sendMessage(String receiver, String message) {
+        if (!message.isEmpty()) {
             HashMap<String, String> data = new HashMap<>();
             data.put("code", "message");
-            data.put("text", input_tf.getText());
+            data.put("text", message);
             data.put("receiver", receiver);
+            data.put("sender" , serverHandler.getUsername());
 
             serverHandler.sendMessage(gson.toJson(data));
-
-            input_tf.setText("");
         }
     }
 
