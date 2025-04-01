@@ -68,7 +68,7 @@ public class MainController {
                     if (map.get("receiver").equals("all")) {
                         output_ta.appendText(prefix + receivedMessage + "\n");
                     } else {
-
+                        output_ta.appendText(prefix + " send you " + receivedMessage + "\n");
                     }
                 } else if (map.get("code").equals("usersList")) {
                     String[] users = map.get("users").split("\\s");
