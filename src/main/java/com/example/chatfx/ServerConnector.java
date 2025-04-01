@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.Socket;
 
-public class ServerHandler {
+public class ServerConnector {
     private Socket socket;
     private DataOutputStream outputStream;
     private DataInputStream inputStream;
@@ -16,12 +16,12 @@ public class ServerHandler {
     private boolean authorized = false;
     private String username;
 
-    private static class ServerHandlerHolder {
-        private static final ServerHandler instance = new ServerHandler();
+    private static class ServerConnectorHolder {
+        private static final ServerConnector instance = new ServerConnector();
     }
 
-    public static ServerHandler getInstance() {
-        return ServerHandlerHolder.instance;
+    public static ServerConnector getInstance() {
+        return ServerConnectorHolder.instance;
     }
 
     public void connect() throws IOException {

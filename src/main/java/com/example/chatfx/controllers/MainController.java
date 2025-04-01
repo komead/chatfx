@@ -1,7 +1,7 @@
 package com.example.chatfx.controllers;
 
 import com.example.chatfx.HelloApplication;
-import com.example.chatfx.ServerHandler;
+import com.example.chatfx.ServerConnector;
 import com.google.gson.Gson;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -27,7 +27,7 @@ public class MainController {
     @FXML
     private ListView<String> users_lv;
 
-    private ServerHandler serverHandler = ServerHandler.getInstance();
+    private ServerConnector serverConnector = ServerConnector.getInstance();
     private volatile boolean pause = true;
     private Gson gson = new Gson();
 
@@ -53,24 +53,28 @@ public class MainController {
                 continue;
 
             try {
-                receivedMessage = serverHandler.checkMessage();
+                receivedMessage = serverConnector.checkMessage();
                 map = gson.fromJson(receivedMessage, HashMap.class);
 
+                // На данный момент может прийти только два типа содержимого: простое сообщение и список пользователей
                 if (map.get("code").equals("message")) {
                     String prefix;
 
-                    if (map.get("sender").equals(serverHandler.getUsername())) {
+                    // Проверяем от кого пришло сообщение и добавляем приписку перед сообщением
+                    if (map.get("sender").equals(serverConnector.getUsername())) {
                         prefix = "You: ";
                     } else {
                         prefix = map.get("sender") + ": ";
                     }
 
+                    // Проверяем кому адресовано сообщение
                     if (map.get("receiver").equals("all")) {
                         output_ta.appendText(prefix + receivedMessage + "\n");
                     } else {
                         output_ta.appendText(prefix + " send you " + receivedMessage + "\n");
                     }
                 } else if (map.get("code").equals("usersList")) {
+                    // Заполняем список пользователей
                     String[] users = map.get("users").split("\\s");
                     users_lv.getItems().addAll(users);
                 }
@@ -97,7 +101,7 @@ public class MainController {
         setListeners();
 
         try {
-            serverHandler.connect();
+            serverConnector.connect();
         } catch (IOException e) {
             info.setText("Не удалось установить соединение с сервером");
         }
@@ -113,19 +117,23 @@ public class MainController {
         if (!checkConnection())
             return;
 
-        if (!serverHandler.isAuthorized())
+        if (!serverConnector.isAuthorized())
             authorize();
 
+        // Если сообщение начинается со слэша, то оно считается личным сообщением.
         if (input_tf.getText().charAt(0) == '/') {
-            String[] arr = input_tf.getText().split("\\s", 2);
-            String[] str = arr[0].substring(1, arr.length - 1).split(",");
+            // После слэша идёт перечисление получателей личного сообщения через запятую, далее через пробел само сообщение
+            String[] parts = input_tf.getText().split("\\s", 2); // Отделяем получателей от сообщения
+            String[] receivers = parts[0].substring(1, parts.length - 1).split(","); // Разделяем получателей между собой
 
-            if (str[0].isEmpty()) {
-                str[0] = arr[0].substring(1, arr[0].length() - 1);
+            // Если получатель один, то массив будет пустой и нужно добавить этого получателя
+            if (receivers[0].isEmpty()) {
+                receivers[0] = parts[0].substring(1, parts[0].length() - 1);
             }
 
-            for (String s : str)
-                sendMessage(s, arr[1]);
+            // Отправляем сообщение каждому получателю
+            for (String s : receivers)
+                sendMessage(s, parts[1]);
         } else {
             sendMessage("all", input_tf.getText());
         }
@@ -133,6 +141,9 @@ public class MainController {
         input_tf.setText("");
     }
 
+    /**
+     * Установка слушателей для элементов интерфейса.
+     */
     private void setListeners() {
         // Действие при нажатии на элемент списка
         users_lv.setOnMouseClicked(event -> {
@@ -141,18 +152,21 @@ public class MainController {
                 String selectedItem = users_lv.getSelectionModel().getSelectedItem();
 
                 if (selectedItem != null) {
-                    info.setText("Выбран: " + selectedItem);
                     StringBuilder msg = new StringBuilder(input_tf.getText());
 
+                    // Личное сообщение должно начинаться со слэша
                     if (msg.isEmpty() || msg.charAt(0) != '/') {
                         msg.insert(0, "/ ");
                     }
 
+                    // После слэша идёт перечисление получателей личного сообщения через запятую, далее через пробел само сообщение.
+                    // Берём первую часть. Если получатель ещё не был указан, то указываем его.
                     String[] arr = msg.toString().split("\\s", 2);
                     if (!arr[0].contains(selectedItem)) {
                         arr[0] += selectedItem + ',';
                     }
 
+                    // Склеиваем всё обратно и возвращаем в поле ввода
                     msg.setLength(0);
                     for (String s : arr) {
                         msg.append(s + ' ');
@@ -173,14 +187,14 @@ public class MainController {
             data.put("code", "message");
             data.put("text", message);
             data.put("receiver", receiver);
-            data.put("sender" , serverHandler.getUsername());
+            data.put("sender" , serverConnector.getUsername());
 
-            serverHandler.sendMessage(gson.toJson(data));
+            serverConnector.sendMessage(gson.toJson(data));
         }
     }
 
     /**
-     * Метод открывает окно авторизации, приостанавливая поток чтения сообщений
+     * Метод открывает окно входа, приостанавливая поток чтения сообщений
      */
     private void authorize() {
         try {
@@ -189,9 +203,10 @@ public class MainController {
             Parent root = loader.load();
 
             Stage newStage = new Stage();
+            newStage.setResizable(false);
             newStage.setTitle("Авторизация");
 
-            Scene scene = new Scene(root, 300, 200);
+            Scene scene = new Scene(root);
             newStage.setScene(scene);
 
             pause = true;
@@ -207,12 +222,12 @@ public class MainController {
      */
     private boolean checkConnection() {
         try {
-            if (serverHandler.isConnected()) {
+            if (serverConnector.isConnected()) {
                 info.setText("");
             }
         } catch (NullPointerException | ConnectException e) {
             if (info != null)
-                info.setText(e.getMessage());
+                info.setText("Нет связи с сервером");
             return false;
         }
 
