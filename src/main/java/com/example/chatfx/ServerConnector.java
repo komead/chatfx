@@ -39,7 +39,7 @@ public class ServerConnector {
         while ((bytesRead = inputStream.read(buffer)) != -1) {
             byteStream.write(buffer, 0, bytesRead);
 
-            if (buffer[bytesRead - 1] == '\n') {
+            if (bytesRead > 0 && buffer[bytesRead - 1] == '\n') {
                 break;
             }
         }
@@ -65,6 +65,7 @@ public class ServerConnector {
     }
 
     public void sendMessage(String message) {
+        message += "\n";
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream()) {
             byteStream.write(message.getBytes(StandardCharsets.UTF_8));
 
