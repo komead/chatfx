@@ -1,15 +1,14 @@
 package com.example.chatfx;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 public class ServerConnector {
     private Socket socket;
-    private DataOutputStream outputStream;
-    private DataInputStream inputStream;
+    private OutputStream outputStream;
+    private InputStream inputStream;
 
     private final String ip = "localhost";
     private final int port = 9090;
@@ -26,13 +25,26 @@ public class ServerConnector {
 
     public void connect() throws IOException {
         socket = new Socket(ip, port);
-        inputStream = new DataInputStream(socket.getInputStream());
-        outputStream = new DataOutputStream(socket.getOutputStream());
+        inputStream = socket.getInputStream();
+        outputStream = socket.getOutputStream();
     }
 
     public String checkMessage() throws IOException {
-        String receivedMessage = "";
-        receivedMessage = inputStream.readUTF();
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+
+        // Читаем полученную строку
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            byteStream.write(buffer, 0, bytesRead);
+
+            if (bytesRead > 0 && buffer[bytesRead - 1] == '\n') {
+                break;
+            }
+        }
+
+        String receivedMessage = byteStream.toString(StandardCharsets.UTF_8).trim();
 
         return receivedMessage;
     }
@@ -53,8 +65,12 @@ public class ServerConnector {
     }
 
     public void sendMessage(String message) {
-        try {
-            outputStream.writeUTF(message);
+        message += "\n";
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream()) {
+            byteStream.write(message.getBytes(StandardCharsets.UTF_8));
+
+            outputStream.write(byteStream.toByteArray());
+            outputStream.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
