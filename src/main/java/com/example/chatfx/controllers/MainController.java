@@ -3,6 +3,7 @@ package com.example.chatfx.controllers;
 import com.example.chatfx.HelloApplication;
 import com.example.chatfx.ServerConnector;
 import com.google.gson.Gson;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -58,25 +59,9 @@ public class MainController {
 
                 // На данный момент может прийти только два типа содержимого: простое сообщение и список пользователей
                 if (map.get("code").equals("message")) {
-                    String prefix;
-
-                    // Проверяем от кого пришло сообщение и добавляем приписку перед сообщением
-                    if (map.get("sender").equals(serverConnector.getUsername())) {
-                        prefix = "You: ";
-                    } else {
-                        prefix = map.get("sender") + ": ";
-                    }
-
-                    // Проверяем кому адресовано сообщение
-                    if (map.get("receiver").equals("all")) {
-                        output_ta.appendText(prefix + receivedMessage + "\n");
-                    } else {
-                        output_ta.appendText(prefix + " send you " + receivedMessage + "\n");
-                    }
+                    messageAction(map.get("sender"), map.get("receiver"), receivedMessage);
                 } else if (map.get("code").equals("usersList")) {
-                    // Заполняем список пользователей
-                    String[] users = map.get("users").split("\\s");
-                    users_lv.getItems().addAll(users);
+                    usersListAction(map.get("users"));
                 }
             } catch (IOException e) {
                 info.setText("Ошибка подключения к серверу");
@@ -232,5 +217,30 @@ public class MainController {
         }
 
         return true;
+    }
+
+    private void messageAction(String sender, String receiver, String message) {
+        String prefix;
+
+        // Проверяем от кого пришло сообщение и добавляем приписку перед сообщением
+        if (sender.equals(serverConnector.getUsername())) {
+            prefix = "You: ";
+        } else {
+            prefix = sender;
+        }
+
+        // Проверяем кому адресовано сообщение
+        if (receiver.equals("all")) {
+            output_ta.appendText(prefix + message + "\n");
+        } else {
+            output_ta.appendText(prefix + " send you: " + message + "\n");
+        }
+    }
+
+    private void usersListAction(String usersList) {
+        // Заполняем список пользователей
+        String[] users = usersList.split(",");
+        users_lv.setItems(FXCollections.observableArrayList(users));
+//        users_lv.getItems().addAll(users);
     }
 }
