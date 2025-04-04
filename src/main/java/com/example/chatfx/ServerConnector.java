@@ -46,6 +46,7 @@ public class ServerConnector {
 
         String receivedMessage = byteStream.toString(StandardCharsets.UTF_8).trim();
 
+        System.out.println(receivedMessage);
         return receivedMessage;
     }
 
@@ -65,7 +66,8 @@ public class ServerConnector {
     }
 
     public void sendMessage(String message) {
-        message += "\n";
+        System.out.println(message);
+        message += '\n';
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream()) {
             byteStream.write(message.getBytes(StandardCharsets.UTF_8));
 

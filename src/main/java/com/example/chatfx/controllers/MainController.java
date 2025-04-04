@@ -59,7 +59,7 @@ public class MainController {
 
                 // На данный момент может прийти только два типа содержимого: простое сообщение и список пользователей
                 if (map.get("code").equals("message")) {
-                    messageAction(map.get("sender"), map.get("receiver"), receivedMessage);
+                    messageAction(map.get("sender"), map.get("receiver"), map.get("text"));
                 } else if (map.get("code").equals("usersList")) {
                     usersListAction(map.get("users"));
                 }
