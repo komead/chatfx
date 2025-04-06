@@ -78,6 +78,18 @@ public class ServerConnector {
         }
     }
 
+    public void sendImage(byte[] imageData) {
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream()) {
+            byteStream.write(imageData);
+
+            outputStream.write(byteStream.toByteArray());
+            outputStream.flush();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public boolean isConnected() throws ConnectException {
         if (socket == null)
             throw new NullPointerException("Сервер недоступен");

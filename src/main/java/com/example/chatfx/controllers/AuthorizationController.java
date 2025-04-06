@@ -1,6 +1,7 @@
 package com.example.chatfx.controllers;
 
 import com.example.chatfx.ServerConnector;
+import com.example.chatfx.enums.OperationCode;
 import com.google.gson.Gson;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -35,7 +36,7 @@ public class AuthorizationController {
 
         // Собираем сообщение для отправки
         HashMap<String, String> data = new HashMap<>();
-        data.put("code", "login");
+        data.put("code", OperationCode.LOGIN.stringValue());
         data.put("username", login_tf.getText());
         data.put("password", password_tf.getText());
 
@@ -54,7 +55,7 @@ public class AuthorizationController {
 
         // Собираем сообщение для отправки
         HashMap<String, String> data = new HashMap<>();
-        data.put("code", "register");
+        data.put("code", OperationCode.REGISTRATION.stringValue());
         data.put("username", login_tf.getText());
         data.put("password", password_tf.getText());
 
@@ -120,13 +121,13 @@ public class AuthorizationController {
 
         HashMap<String, String> data = gson.fromJson(answer, HashMap.class);
 
-        switch (data.get("code")) {
-            case "ok":
+        switch (OperationCode.fromValue(data.get("code"))) {
+            case ACCESS_GRANTED:
                 serverConnector.setAuthorized(true);
                 Stage stage = (Stage) info.getScene().getWindow();
                 stage.close();
                 break;
-            case "deny":
+            case ACCESS_DENIED:
                 info.setText(data.get("body"));
                 break;
         }

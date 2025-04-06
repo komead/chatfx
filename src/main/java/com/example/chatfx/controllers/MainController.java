@@ -2,25 +2,32 @@ package com.example.chatfx.controllers;
 
 import com.example.chatfx.HelloApplication;
 import com.example.chatfx.ServerConnector;
+import com.example.chatfx.enums.OperationCode;
 import com.google.gson.Gson;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.nio.file.Files;
 import java.util.HashMap;
 
 public class MainController {
     @FXML
-    private TextArea output_ta;
+    private TextFlow output_tf;
     @FXML
     private TextField input_tf;
     @FXML
@@ -37,7 +44,7 @@ public class MainController {
      */
     private final Thread messageReader = new Thread(() -> {
         String receivedMessage;
-        HashMap<String, String> map;
+        HashMap<String, String> messageMap;
 
         while (true) {
             // На случай, если нужно где-то приостановить поток
@@ -55,13 +62,21 @@ public class MainController {
 
             try {
                 receivedMessage = serverConnector.checkMessage();
-                map = gson.fromJson(receivedMessage, HashMap.class);
+                messageMap = gson.fromJson(receivedMessage, HashMap.class);
 
-                // На данный момент может прийти только два типа содержимого: простое сообщение и список пользователей
-                if (map.get("code").equals("message")) {
-                    messageAction(map.get("sender"), map.get("receiver"), map.get("text"));
-                } else if (map.get("code").equals("usersList")) {
-                    usersListAction(map.get("users"));
+                switch (OperationCode.fromValue(messageMap.get("code"))) {
+                    case USERS_LIST:
+                        usersListAction(messageMap.get("users"));
+                        break;
+                    case MESSAGE:
+                        messageAction(messageMap.get("sender"), messageMap.get("receivers"), messageMap.get("text"));
+                        break;
+                    case IMAGE:
+                        imageAction(messageMap);
+                    case null:
+                    default:
+                        System.out.println("Неопознанное действие");
+                        break;
                 }
             } catch (IOException e) {
                 info.setText("Ошибка подключения к серверу");
@@ -109,21 +124,34 @@ public class MainController {
         if (input_tf.getText().charAt(0) == '/') {
             // После слэша идёт перечисление получателей личного сообщения через запятую, далее через пробел само сообщение
             String[] parts = input_tf.getText().split("\\s", 2); // Отделяем получателей от сообщения
-            String[] receivers = parts[0].substring(1, parts.length - 1).split(","); // Разделяем получателей между собой
-
-            // Если получатель один, то массив будет пустой и нужно добавить этого получателя
-            if (receivers[0].isEmpty()) {
-                receivers[0] = parts[0].substring(1, parts[0].length() - 1);
-            }
-
-            // Отправляем сообщение каждому получателю
-            for (String s : receivers)
-                sendMessage(s, parts[1]);
+            sendMessage(parts[0].substring(1, parts[0].length() - 1), parts[1]);
         } else {
-            sendMessage("all", input_tf.getText());
+            sendMessage("", input_tf.getText());
         }
 
-        input_tf.setText("");
+        Platform.runLater(() -> input_tf.setText(""));
+    }
+
+    @FXML
+    private void onUploadButtonClick() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Выберите изображение");
+        // Устанавливаем фильтры для изображений
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Изображения", "*.png", "*.jpg", "*.jpeg"));
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile != null) {
+            try {
+                // Читаем файл в массив байтов
+                byte[] imageData = Files.readAllBytes(selectedFile.toPath());
+                HashMap<String, String> map = new HashMap<>();
+                map.put("code", OperationCode.IMAGE.stringValue());
+                map.put("receivers", "");
+                map.put("image", new String(imageData));
+                serverConnector.sendMessage(gson.toJson(map));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -169,9 +197,9 @@ public class MainController {
     private void sendMessage(String receiver, String message) {
         if (!message.isEmpty()) {
             HashMap<String, String> data = new HashMap<>();
-            data.put("code", "message");
+            data.put("code", OperationCode.MESSAGE.stringValue());
             data.put("text", message);
-            data.put("receiver", receiver);
+            data.put("receivers", receiver);
             data.put("sender" , serverConnector.getUsername());
 
             serverConnector.sendMessage(gson.toJson(data));
@@ -224,16 +252,18 @@ public class MainController {
 
         // Проверяем от кого пришло сообщение и добавляем приписку перед сообщением
         if (sender.equals(serverConnector.getUsername())) {
-            prefix = "You: ";
+            prefix = "You";
         } else {
             prefix = sender;
         }
 
         // Проверяем кому адресовано сообщение
-        if (receiver.equals("all")) {
-            output_ta.appendText(prefix + message + "\n");
+        if (receiver.isEmpty()) {
+            Text text = new Text(prefix + ": " + message + "\n");
+            Platform.runLater(() -> output_tf.getChildren().add(text));
         } else {
-            output_ta.appendText(prefix + " send you: " + message + "\n");
+            Label label = new Label(prefix + " send you: " + message + "\n");
+            output_tf.getChildren().add(label);
         }
     }
 
@@ -242,5 +272,13 @@ public class MainController {
         String[] users = usersList.split(",");
         users_lv.setItems(FXCollections.observableArrayList(users));
 //        users_lv.getItems().addAll(users);
+    }
+
+    private void imageAction(HashMap<String, String> map) {
+        byte[] imageData = map.get("image").getBytes();
+        Image image = new Image(new ByteArrayInputStream(imageData));
+        ImageView imageView = new ImageView(image);
+        // Добавляем ImageView в ваш UI (например, в VBox или ScrollPane)
+//        chatContainer.getChildren().add(imageView);
     }
 }
