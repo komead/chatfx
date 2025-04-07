@@ -13,6 +13,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
@@ -22,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 
@@ -34,6 +37,8 @@ public class MainController {
     private Label info;
     @FXML
     private ListView<String> users_lv;
+    @FXML
+    private ScrollPane scrollPane;
 
     private ServerConnector serverConnector = ServerConnector.getInstance();
     private volatile boolean pause = true;
@@ -73,6 +78,7 @@ public class MainController {
                         break;
                     case IMAGE:
                         imageAction(messageMap);
+                        break;
                     case null:
                     default:
                         System.out.println("Неопознанное действие");
@@ -114,7 +120,7 @@ public class MainController {
      */
     @FXML
     private void onSendButtonClick() {
-        if (!checkConnection())
+        if (input_tf.getText().isEmpty() || !checkConnection())
             return;
 
         if (!serverConnector.isAuthorized())
@@ -149,6 +155,21 @@ public class MainController {
                 map.put("image", new String(imageData));
                 serverConnector.sendMessage(gson.toJson(map));
             } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @FXML
+    private void onPressedKeyHandler(KeyEvent event) {
+        // При нажатии на enter
+        if (event.getCode() == KeyCode.ENTER) {
+            onSendButtonClick();
+
+            // Задержка от спама
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
@@ -260,7 +281,11 @@ public class MainController {
         // Проверяем кому адресовано сообщение
         if (receiver.isEmpty()) {
             Text text = new Text(prefix + ": " + message + "\n");
-            Platform.runLater(() -> output_tf.getChildren().add(text));
+            Platform.runLater(() -> {
+                output_tf.getChildren().add(text);
+                // Прокрутка вниз
+                scrollPane.setVvalue(1.0);
+            });
         } else {
             Label label = new Label(prefix + " send you: " + message + "\n");
             output_tf.getChildren().add(label);
@@ -275,10 +300,14 @@ public class MainController {
     }
 
     private void imageAction(HashMap<String, String> map) {
-        byte[] imageData = map.get("image").getBytes();
+        byte[] imageData = map.get("image").getBytes(StandardCharsets.UTF_8);
         Image image = new Image(new ByteArrayInputStream(imageData));
         ImageView imageView = new ImageView(image);
-        // Добавляем ImageView в ваш UI (например, в VBox или ScrollPane)
-//        chatContainer.getChildren().add(imageView);
+        // Добавляем ImageView
+        Platform.runLater(() -> {
+            output_tf.getChildren().add(imageView);
+            // Прокрутка вниз
+            scrollPane.setVvalue(1.0);
+        });
     }
 }
