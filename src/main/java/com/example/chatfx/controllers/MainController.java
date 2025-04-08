@@ -15,6 +15,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
@@ -26,11 +27,12 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Base64;
 import java.util.HashMap;
 
 public class MainController {
     @FXML
-    private TextFlow output_tf;
+    private VBox output_vb;
     @FXML
     private TextField input_tf;
     @FXML
@@ -152,7 +154,7 @@ public class MainController {
                 HashMap<String, String> map = new HashMap<>();
                 map.put("code", OperationCode.IMAGE.stringValue());
                 map.put("receivers", "");
-                map.put("image", new String(imageData));
+                map.put("image", Base64.getEncoder().encodeToString(imageData));
                 serverConnector.sendMessage(gson.toJson(map));
             } catch (IOException e) {
                 e.printStackTrace();
@@ -282,13 +284,13 @@ public class MainController {
         if (receiver.isEmpty()) {
             Text text = new Text(prefix + ": " + message + "\n");
             Platform.runLater(() -> {
-                output_tf.getChildren().add(text);
+                output_vb.getChildren().add(text);
                 // Прокрутка вниз
                 scrollPane.setVvalue(1.0);
             });
         } else {
             Label label = new Label(prefix + " send you: " + message + "\n");
-            output_tf.getChildren().add(label);
+            output_vb.getChildren().add(label);
         }
     }
 
@@ -300,12 +302,21 @@ public class MainController {
     }
 
     private void imageAction(HashMap<String, String> map) {
-        byte[] imageData = map.get("image").getBytes(StandardCharsets.UTF_8);
+        // Извлечение данных из строки и создание картинки
+        byte[] imageData = Base64.getDecoder().decode(map.get("image"));
         Image image = new Image(new ByteArrayInputStream(imageData));
         ImageView imageView = new ImageView(image);
+
+        // Масштабируем картинку до определённой ширины
+        double originalWidth = image.getWidth();
+        double originalHeight = image.getHeight();
+        double newWidth = 200;
+
+        imageView.setFitWidth(newWidth);
+        imageView.setFitHeight(newWidth / originalWidth * originalHeight);
         // Добавляем ImageView
         Platform.runLater(() -> {
-            output_tf.getChildren().add(imageView);
+            output_vb.getChildren().add(imageView);
             // Прокрутка вниз
             scrollPane.setVvalue(1.0);
         });

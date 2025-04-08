@@ -1,17 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ListView?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<?import javafx.scene.text.TextFlow?>
-<?import javafx.scene.control.ScrollPane?>
-<SplitPane dividerPositions="0.7" minHeight="-Infinity" minWidth="-Infinity" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.chatfx.controllers.MainController">
+<SplitPane dividerPositions="0.8" prefHeight="500.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.chatfx.controllers.MainController">
    <items>
       <VBox alignment="CENTER" spacing="5.0">
           <padding>
@@ -19,19 +12,25 @@
           </padding>
 
           <ScrollPane fx:id="scrollPane" fitToWidth="true" VBox.vgrow="ALWAYS">
-              <TextFlow fx:id="output_tf"/>
+              <VBox fx:id="output_vb">
+               <opaqueInsets>
+                  <Insets />
+               </opaqueInsets>
+               <padding>
+                  <Insets left="10.0" right="10.0" />
+               </padding></VBox>
           </ScrollPane>
-      
+
           <Label fx:id="info" textFill="RED">
               <VBox.margin>
                   <Insets />
               </VBox.margin>
           </Label>
-      
+
          <HBox alignment="CENTER" spacing="20.0">
-      
-             <TextField fx:id="input_tf" HBox.hgrow="ALWAYS" onKeyPressed="#onPressedKeyHandler" />
-            <Button onAction="#onUploadButtonClick" mnemonicParsing="false" text="Img" />
+
+             <TextField fx:id="input_tf" onKeyPressed="#onPressedKeyHandler" HBox.hgrow="ALWAYS" />
+            <Button mnemonicParsing="false" onAction="#onUploadButtonClick" text="Img" />
       
              <Button onAction="#onSendButtonClick" text="Send" />
          </HBox>
