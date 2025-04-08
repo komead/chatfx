@@ -10,7 +10,7 @@ public class ServerConnector {
     private OutputStream outputStream;
     private InputStream inputStream;
 
-    private final String ip = "10.10.242.226";
+    private final String ip = "localhost";
     private final int port = 9090;
     private boolean authorized = false;
     private String username;

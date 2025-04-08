@@ -6,6 +6,7 @@ import com.example.chatfx.enums.OperationCode;
 import com.google.gson.Gson;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -17,20 +18,16 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 public class MainController {
     @FXML
@@ -43,6 +40,8 @@ public class MainController {
     private ListView<String> users_lv;
     @FXML
     private ScrollPane scrollPane;
+
+    private ObservableList<String> items = FXCollections.observableArrayList();
 
     private ServerConnector serverConnector = ServerConnector.getInstance();
     private volatile boolean pause = true;
@@ -101,7 +100,7 @@ public class MainController {
 
     @FXML
     public void initialize() {
-        setListeners();
+        configListView();
 
         try {
             serverConnector.connect();
@@ -117,12 +116,15 @@ public class MainController {
      */
     @FXML
     private void onSendButtonClick() {
+        ArrayList<String> receivers = getSelectedItems();
+
         if (input_tf.getText().isEmpty() || !checkConnection())
             return;
 
         if (!serverConnector.isAuthorized())
             authorize();
 
+        /*
         // Если сообщение начинается со слэша, то оно считается личным сообщением.
         if (input_tf.getText().charAt(0) == '/') {
             // После слэша идёт перечисление получателей личного сообщения через запятую, далее через пробел само сообщение
@@ -130,6 +132,19 @@ public class MainController {
             sendMessage(parts[0].substring(1, parts[0].length() - 1), parts[1]);
         } else {
             sendMessage("", input_tf.getText());
+        }
+
+         */
+
+        if (receivers.isEmpty()) {
+            sendMessage("", input_tf.getText());
+        } else {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (String receiver : receivers) {
+                stringBuilder.append(receiver);
+            }
+
+            sendMessage(stringBuilder.toString(), input_tf.getText());
         }
 
         Platform.runLater(() -> input_tf.setText(""));
@@ -169,9 +184,12 @@ public class MainController {
     }
 
     /**
-     * Установка слушателей для элементов интерфейса.
+     * Настройка ListView.
      */
-    private void setListeners() {
+    private void configListView() {
+        users_lv.setItems(items);
+
+        /*
         // Действие при нажатии на элемент списка
         users_lv.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -205,6 +223,57 @@ public class MainController {
                 }
             }
         });
+
+         */
+
+        users_lv.setCellFactory(new Callback<>() {
+            @Override
+            public ListCell<String> call(ListView<String> param) {
+                return new ListCell<>() {
+                    private final CheckBox checkBox = new CheckBox();
+
+                    {
+                        // Привязываем текст CheckBox к значению элемента списка
+                        checkBox.textProperty().bind(itemProperty());
+                    }
+
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setGraphic(null);
+                        } else {
+                            setGraphic(checkBox);
+                        }
+                    }
+                };
+            }
+        });
+    }
+
+    // Метод для получения отмеченных элементов
+    public ArrayList<String> getSelectedItems() {
+        ArrayList<String> selected = new ArrayList<>();
+
+        // Проходим по каждой строке списка
+        for (int i = 0; i < users_lv.getItems().size(); i++) {
+            ListCell<String> cell = (ListCell<String>) users_lv.lookup(".list-cell");
+
+            if (cell != null && cell.getGraphic() instanceof CheckBox) {
+                CheckBox checkBox = (CheckBox) cell.getGraphic();
+                if (checkBox.isSelected()) {
+                    selected.add(users_lv.getItems().get(i));
+                }
+            }
+        }
+        return selected;
+    }
+
+    /**
+     * Метод для обновления ListView новыми данными
+     */
+    public void updateListView(String[] newItems) {
+        items.setAll(FXCollections.observableArrayList(newItems));
     }
 
     /**
@@ -294,7 +363,7 @@ public class MainController {
         // Заполняем список пользователей
         String[] users = usersList.split(",");
         Platform.runLater(() -> {
-            users_lv.setItems(FXCollections.observableArrayList(users));
+            updateListView(users);
         });
     }
 
