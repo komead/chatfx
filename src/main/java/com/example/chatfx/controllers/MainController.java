@@ -56,17 +56,14 @@ public class MainController {
         while (true) {
             // На случай, если нужно где-то приостановить поток
             if (pause) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                pause(1000);
                 continue;
             }
             // Если нет соединения с сервером, то пропускаем чтение сообщения
             if (!checkConnection())
                 continue;
 
+            // Получаем сообщение и обрабатываем его
             try {
                 receivedMessage = serverConnector.checkMessage();
                 messageMap = gson.fromJson(receivedMessage, HashMap.class);
@@ -90,11 +87,7 @@ public class MainController {
                 info.setText("Ошибка подключения к серверу");
             }
 
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            pause(1000);
         }
     });
 
@@ -169,11 +162,7 @@ public class MainController {
             onSendButtonClick();
 
             // Задержка от спама
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            pause(500);
         }
     }
 
@@ -207,7 +196,10 @@ public class MainController {
                     for (String s : arr) {
                         msg.append(s + ' ');
                     }
-                    input_tf.setText(msg.toString());
+
+                    Platform.runLater(() -> {
+                        input_tf.setText(msg.toString());
+                    });
                 }
             }
         });
@@ -281,24 +273,25 @@ public class MainController {
         }
 
         // Проверяем кому адресовано сообщение
+        Text text = new Text();
         if (receiver.isEmpty()) {
-            Text text = new Text(prefix + ": " + message + "\n");
-            Platform.runLater(() -> {
-                output_vb.getChildren().add(text);
-                // Прокрутка вниз
-                scrollPane.setVvalue(1.0);
-            });
+            text.setText(prefix + ": " + message);
         } else {
-            Label label = new Label(prefix + " send you: " + message + "\n");
-            output_vb.getChildren().add(label);
+            text.setText(prefix + " send you: " + message);
         }
+
+        Platform.runLater(() -> {
+            output_vb.getChildren().add(text);
+            scrollPane.setVvalue(1.0); // Прокрутка вниз
+        });
     }
 
     private void usersListAction(String usersList) {
         // Заполняем список пользователей
         String[] users = usersList.split(",");
-        users_lv.setItems(FXCollections.observableArrayList(users));
-//        users_lv.getItems().addAll(users);
+        Platform.runLater(() -> {
+            users_lv.setItems(FXCollections.observableArrayList(users));
+        });
     }
 
     private void imageAction(HashMap<String, String> map) {
@@ -314,11 +307,19 @@ public class MainController {
 
         imageView.setFitWidth(newWidth);
         imageView.setFitHeight(newWidth / originalWidth * originalHeight);
-        // Добавляем ImageView
+
+        // Добавляем картинку в чат
         Platform.runLater(() -> {
             output_vb.getChildren().add(imageView);
-            // Прокрутка вниз
-            scrollPane.setVvalue(1.0);
+            scrollPane.setVvalue(1.0); // Прокрутка вниз
         });
+    }
+
+    private void pause(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
