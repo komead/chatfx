@@ -28,7 +28,9 @@ import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class MainController {
     @FXML
@@ -262,8 +264,10 @@ public class MainController {
         return true;
     }
 
-    private void messageAction(String sender, String receiver, String message) {
+    private void messageAction(String sender, String receivers, String message) {
         String prefix;
+        HashSet<String> receiver = new HashSet<>();
+        Collections.addAll(receiver, receivers.split(","));
 
         // Проверяем от кого пришло сообщение и добавляем приписку перед сообщением
         if (sender.equals(serverConnector.getUsername())) {
@@ -274,10 +278,10 @@ public class MainController {
 
         // Проверяем кому адресовано сообщение
         Text text = new Text();
-        if (receiver.isEmpty()) {
-            text.setText(prefix + ": " + message);
-        } else {
+        if (receiver.contains(serverConnector.getUsername()) && !sender.equals(serverConnector.getUsername())) {
             text.setText(prefix + " send you: " + message);
+        } else {
+            text.setText(prefix + ": " + message);
         }
 
         Platform.runLater(() -> {
