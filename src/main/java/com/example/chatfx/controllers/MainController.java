@@ -38,8 +38,6 @@ public class MainController {
     @FXML
     private Label info;
     @FXML
-    private Button uncheck_btn;
-    @FXML
     private ScrollPane scrollPane;
 
     private ObservableList<Node> itemsList;
@@ -62,7 +60,7 @@ public class MainController {
                 continue;
             }
             // Если нет соединения с сервером, то пропускаем чтение сообщения
-            if (!checkConnection())
+            if (!serverConnector.isConnected())
                 continue;
 
             // Получаем сообщение и обрабатываем его
@@ -86,7 +84,11 @@ public class MainController {
                         break;
                 }
             } catch (IOException e) {
-                info.setText("Ошибка подключения к серверу");
+                Platform.runLater(() -> {
+                    info.setText("Ошибка подключения к серверу");
+                });
+
+                serverConnector.setConnected(false);
             }
 
             pause(1000);
@@ -117,8 +119,13 @@ public class MainController {
      */
     @FXML
     private void onSendButtonClick() {
-        if (input_tf.getText().isEmpty() || !checkConnection())
+        if (input_tf.getText().isEmpty())
             return;
+
+        if (!serverConnector.isConnected()) {
+            reconnect();
+            return;
+        }
 
         if (!serverConnector.isAuthorized())
             authorize();
@@ -154,7 +161,7 @@ public class MainController {
                 map.put("code", OperationCode.IMAGE.stringValue());
                 map.put("receivers", "");
                 map.put("image", Base64.getEncoder().encodeToString(imageData));
-                serverConnector.sendMessage(gson.toJson(map));
+                sendMessage("", gson.toJson(map));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -246,7 +253,15 @@ public class MainController {
             data.put("receivers", receiver);
             data.put("sender" , serverConnector.getUsername());
 
-            serverConnector.sendMessage(gson.toJson(data));
+            try {
+                serverConnector.sendMessage(gson.toJson(data));
+            } catch (IOException e) {
+                serverConnector.setConnected(false);
+                Platform.runLater(() -> {
+                    info.setText("Нет соединения с сервером");
+                });
+                reconnect();
+            }
         }
     }
 
@@ -272,23 +287,6 @@ public class MainController {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Метод возвращает true при наличии соединения
-     */
-    private boolean checkConnection() {
-        try {
-            if (serverConnector.isConnected()) {
-                info.setText("");
-            }
-        } catch (NullPointerException | ConnectException e) {
-            if (info != null)
-                info.setText("Нет связи с сервером");
-            return false;
-        }
-
-        return true;
     }
 
     private void messageAction(String sender, String receivers, String message) {
@@ -347,6 +345,21 @@ public class MainController {
             output_vb.getChildren().add(imageView);
             scrollPane.setVvalue(1.0); // Прокрутка вниз
         });
+    }
+
+    private void reconnect() {
+        try {
+            serverConnector.reconnect();
+            serverConnector.setConnected(true);
+
+            Platform.runLater(() -> info.setText(""));
+        } catch (IOException e) {
+            serverConnector.setConnected(true);
+
+            Platform.runLater(() -> {
+                info.setText("Сервер недоступен");
+            });
+        }
     }
 
     private void pause(int millis) {

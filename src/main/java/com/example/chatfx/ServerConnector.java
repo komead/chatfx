@@ -1,9 +1,13 @@
 package com.example.chatfx;
 
+import com.example.chatfx.enums.OperationCode;
+import com.google.gson.Gson;
+
 import java.io.*;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 
 public class ServerConnector {
     private Socket socket;
@@ -13,7 +17,8 @@ public class ServerConnector {
     private final String ip = "localhost";
     private final int port = 9090;
     private boolean authorized = false;
-    private String username;
+    private boolean connected = false;
+    private String username = "";
 
     private static class ServerConnectorHolder {
         private static final ServerConnector instance = new ServerConnector();
@@ -27,6 +32,7 @@ public class ServerConnector {
         socket = new Socket(ip, port);
         inputStream = socket.getInputStream();
         outputStream = socket.getOutputStream();
+        connected = true;
     }
 
     public String checkMessage() throws IOException {
@@ -50,6 +56,16 @@ public class ServerConnector {
         return receivedMessage;
     }
 
+    public void sendMessage(String message) throws IOException {
+        System.out.println(message);
+        message += '\n';
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        byteStream.write(message.getBytes(StandardCharsets.UTF_8));
+
+        outputStream.write(byteStream.toByteArray());
+        outputStream.flush();
+    }
+
     public void finish() {
         try {
             if (inputStream != null)
@@ -65,44 +81,16 @@ public class ServerConnector {
         }
     }
 
-    public void sendMessage(String message) {
-        System.out.println(message);
-        message += '\n';
-        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream()) {
-            byteStream.write(message.getBytes(StandardCharsets.UTF_8));
-
-            outputStream.write(byteStream.toByteArray());
-            outputStream.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void sendImage(byte[] imageData) {
-        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream()) {
-            byteStream.write(imageData);
-
-            outputStream.write(byteStream.toByteArray());
-            outputStream.flush();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public boolean isConnected() throws ConnectException {
-        if (socket == null)
-            throw new NullPointerException("Сервер недоступен");
-
-        if (socket.isClosed())
-            throw new ConnectException("Нет соединения с сервером");
-
-        return true;
-    }
-
     public void reconnect() throws IOException {
         finish();
         connect();
+
+        HashMap<String, String> map = new HashMap<>();
+        map.put("username", username);
+        map.put("code", OperationCode.RECONNECT.stringValue());
+
+        Gson gson = new Gson();
+        sendMessage(gson.toJson(map));
     }
 
     public boolean isAuthorized() {
@@ -119,5 +107,13 @@ public class ServerConnector {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public void setConnected(boolean connected) {
+        this.connected = connected;
     }
 }

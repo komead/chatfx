@@ -41,7 +41,12 @@ public class AuthorizationController {
         data.put("password", password_tf.getText());
 
         // Отправляем сообщение и ждём ответ
-        serverConnector.sendMessage(gson.toJson(data));
+        try {
+            serverConnector.sendMessage(gson.toJson(data));
+        } catch (IOException e) {
+            info.setText("Нет соединения с сервером");
+            serverConnector.setConnected(false);
+        }
         info.setText("Ждём ответ от сервера...");
         serverConnector.setUsername(login_tf.getText());
         checkMessage();
@@ -60,7 +65,12 @@ public class AuthorizationController {
         data.put("password", password_tf.getText());
 
         // Отправляем сообщение и ждём ответ
-        serverConnector.sendMessage(gson.toJson(data));
+        try {
+            serverConnector.sendMessage(gson.toJson(data));
+        } catch (IOException e) {
+            info.setText("Нет соединения с сервером");
+            serverConnector.setConnected(false);
+        }
         info.setText("Ждём ответ от сервера...");
         serverConnector.setUsername(login_tf.getText());
         checkMessage();
@@ -70,16 +80,17 @@ public class AuthorizationController {
      * Метод проверяет перед отправкой сообщения подключение к серверу и корректность введённых данных.
      */
     private boolean checkProblems() {
-        try {
-            if (serverConnector.isConnected()) {
-                info.setText("");
+        if (serverConnector.isConnected()) {
+            info.setText("");
+        } else {
+            info.setText("Нет соединения с сервером");
+            try {
+                serverConnector.reconnect();
+                serverConnector.setConnected(true);
+            } catch (IOException e) {
+                info.setText("Сервер недоступен");
+                return true;
             }
-        } catch (NullPointerException e) {
-            info.setText(e.getMessage());
-            return true;
-        } catch (ConnectException e) {
-            info.setText(e.getMessage());
-            return true;
         }
 
         // При пустых полях ничего происходить не должно
@@ -113,7 +124,8 @@ public class AuthorizationController {
         try {
             answer = serverConnector.checkMessage();
         } catch (IOException e) {
-            info.setText("Потеряно соединение с сервером");
+            info.setText("Нет соединения с сервером");
+            serverConnector.setConnected(false);
         }
 
         if (answer.isEmpty())
