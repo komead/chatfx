@@ -5,10 +5,10 @@ import com.example.chatfx.ServerConnector;
 import com.example.chatfx.enums.OperationCode;
 import com.google.gson.Gson;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -20,7 +20,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.util.Callback;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -33,15 +32,17 @@ public class MainController {
     @FXML
     private VBox output_vb;
     @FXML
+    private VBox users_vb;
+    @FXML
     private TextField input_tf;
     @FXML
     private Label info;
     @FXML
-    private ListView<String> users_lv;
+    private Button uncheck_btn;
     @FXML
     private ScrollPane scrollPane;
 
-    private ObservableList<String> items = FXCollections.observableArrayList();
+    private ObservableList<Node> itemsList;
 
     private ServerConnector serverConnector = ServerConnector.getInstance();
     private volatile boolean pause = true;
@@ -100,7 +101,7 @@ public class MainController {
 
     @FXML
     public void initialize() {
-        configListView();
+        itemsList = users_vb.getChildren();
 
         try {
             serverConnector.connect();
@@ -116,32 +117,20 @@ public class MainController {
      */
     @FXML
     private void onSendButtonClick() {
-        ArrayList<String> receivers = getSelectedItems();
-
         if (input_tf.getText().isEmpty() || !checkConnection())
             return;
 
         if (!serverConnector.isAuthorized())
             authorize();
 
-        /*
-        // Если сообщение начинается со слэша, то оно считается личным сообщением.
-        if (input_tf.getText().charAt(0) == '/') {
-            // После слэша идёт перечисление получателей личного сообщения через запятую, далее через пробел само сообщение
-            String[] parts = input_tf.getText().split("\\s", 2); // Отделяем получателей от сообщения
-            sendMessage(parts[0].substring(1, parts[0].length() - 1), parts[1]);
-        } else {
-            sendMessage("", input_tf.getText());
-        }
-
-         */
+        HashSet<String> receivers = getSelectedUsers();
 
         if (receivers.isEmpty()) {
             sendMessage("", input_tf.getText());
         } else {
             StringBuilder stringBuilder = new StringBuilder();
             for (String receiver : receivers) {
-                stringBuilder.append(receiver);
+                stringBuilder.append(receiver + ',');
             }
 
             sendMessage(stringBuilder.toString(), input_tf.getText());
@@ -173,6 +162,20 @@ public class MainController {
     }
 
     @FXML
+    private void onUncheckButtonClick() {
+        for (Node item : itemsList) {
+            // Если элемент является CheckBox
+            if (item instanceof CheckBox) {
+                CheckBox checkBox = (CheckBox) item;
+
+                if (checkBox.isSelected()) {
+                    checkBox.setSelected(false);
+                }
+            }
+        }
+    }
+
+    @FXML
     private void onPressedKeyHandler(KeyEvent event) {
         // При нажатии на enter
         if (event.getCode() == KeyCode.ENTER) {
@@ -184,96 +187,51 @@ public class MainController {
     }
 
     /**
-     * Настройка ListView.
+     * Метод возвращает список выбранных пользователей
      */
-    private void configListView() {
-        users_lv.setItems(items);
+    public HashSet<String> getSelectedUsers() {
+        HashSet<String> selected = new HashSet<>();
 
-        /*
-        // Действие при нажатии на элемент списка
-        users_lv.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                // Извлечение значения элемента, на который нажали
-                String selectedItem = users_lv.getSelectionModel().getSelectedItem();
+        for (Node item : itemsList) {
+            // Если элемент является CheckBox
+            if (item instanceof CheckBox) {
+                CheckBox checkBox = (CheckBox) item;
 
-                if (selectedItem != null) {
-                    StringBuilder msg = new StringBuilder(input_tf.getText());
-
-                    // Личное сообщение должно начинаться со слэша
-                    if (msg.isEmpty() || msg.charAt(0) != '/') {
-                        msg.insert(0, "/ ");
-                    }
-
-                    // После слэша идёт перечисление получателей личного сообщения через запятую, далее через пробел само сообщение.
-                    // Берём первую часть. Если получатель ещё не был указан, то указываем его.
-                    String[] arr = msg.toString().split("\\s", 2);
-                    if (!arr[0].contains(selectedItem)) {
-                        arr[0] += selectedItem + ',';
-                    }
-
-                    // Склеиваем всё обратно и возвращаем в поле ввода
-                    msg.setLength(0);
-                    for (String s : arr) {
-                        msg.append(s + ' ');
-                    }
-
-                    Platform.runLater(() -> {
-                        input_tf.setText(msg.toString());
-                    });
-                }
-            }
-        });
-
-         */
-
-        users_lv.setCellFactory(new Callback<>() {
-            @Override
-            public ListCell<String> call(ListView<String> param) {
-                return new ListCell<>() {
-                    private final CheckBox checkBox = new CheckBox();
-
-                    {
-                        // Привязываем текст CheckBox к значению элемента списка
-                        checkBox.textProperty().bind(itemProperty());
-                    }
-
-                    @Override
-                    protected void updateItem(String item, boolean empty) {
-                        super.updateItem(item, empty);
-                        if (empty || item == null) {
-                            setGraphic(null);
-                        } else {
-                            setGraphic(checkBox);
-                        }
-                    }
-                };
-            }
-        });
-    }
-
-    // Метод для получения отмеченных элементов
-    public ArrayList<String> getSelectedItems() {
-        ArrayList<String> selected = new ArrayList<>();
-
-        // Проходим по каждой строке списка
-        for (int i = 0; i < users_lv.getItems().size(); i++) {
-            ListCell<String> cell = (ListCell<String>) users_lv.lookup(".list-cell");
-
-            if (cell != null && cell.getGraphic() instanceof CheckBox) {
-                CheckBox checkBox = (CheckBox) cell.getGraphic();
                 if (checkBox.isSelected()) {
-                    selected.add(users_lv.getItems().get(i));
+                    selected.add(checkBox.getText());
                 }
             }
         }
+
         return selected;
     }
 
     /**
-     * Метод для обновления ListView новыми данными
+     * Метод для обновления списка пользователей новыми данными
      */
-    public void updateListView(String[] newItems) {
-        items.setAll(FXCollections.observableArrayList(newItems));
+    public void updateUsersList(Set<String> newItems) {
+        List<Node> toRemove = new ArrayList<>();
+
+        for (Node item : itemsList) {
+            // Если элемент является CheckBox
+            if (item instanceof CheckBox) {
+                CheckBox checkBox = (CheckBox) item;
+
+                if (!newItems.contains(checkBox.getText())) {
+                    // Удаляем из текущего списка, то, чего нет в новом списке
+                    toRemove.add(item);
+                } else {
+                    // Удаляем в новом списке то, что уже есть в текущем
+                    newItems.remove(checkBox.getText());
+                }
+            }
+        }
+
+        itemsList.removeAll(toRemove);
+
+        for (String item : newItems) {
+            itemsList.add(new CheckBox(item));
+        }
     }
 
     /**
@@ -360,10 +318,13 @@ public class MainController {
     }
 
     private void usersListAction(String usersList) {
-        // Заполняем список пользователей
-        String[] users = usersList.split(",");
+        HashSet<String> users = new HashSet<>();
+        for (String user : usersList.split(",")) {
+            users.add(user);
+        }
+
         Platform.runLater(() -> {
-            updateListView(users);
+            updateUsersList(users);
         });
     }
 
