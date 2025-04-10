@@ -86,7 +86,6 @@ public class MainController {
                 }
             } catch (IOException e) {
                 setInfo("Ошибка подключения к серверу");
-
                 serverConnector.setConnected(false);
             }
 
@@ -170,7 +169,8 @@ public class MainController {
 
                 setInfo("");
             } catch (IOException e) {
-                e.printStackTrace();
+                setInfo("Ошибка подключения к серверу");
+                serverConnector.setConnected(false);
             }
         }
     }
