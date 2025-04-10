@@ -161,7 +161,7 @@ public class MainController {
                 map.put("code", OperationCode.IMAGE.stringValue());
                 map.put("receivers", "");
                 map.put("image", Base64.getEncoder().encodeToString(imageData));
-                sendMessage("", gson.toJson(map));
+                serverConnector.sendMessage(gson.toJson(map));
             } catch (IOException e) {
                 e.printStackTrace();
             }

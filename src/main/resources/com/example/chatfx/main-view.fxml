@@ -59,7 +59,7 @@
                   <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                </padding>
             </ScrollPane>
-            <Button fx:id="uncheck_btn" onAction="#onUncheckButtonClick" mnemonicParsing="false" text="Uncheck">
+            <Button onAction="#onUncheckButtonClick" mnemonicParsing="false" text="Uncheck">
                <VBox.margin>
                   <Insets bottom="10.0" top="5.0" />
                </VBox.margin>
