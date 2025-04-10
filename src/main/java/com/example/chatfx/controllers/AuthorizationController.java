@@ -3,6 +3,7 @@ package com.example.chatfx.controllers;
 import com.example.chatfx.ServerConnector;
 import com.example.chatfx.enums.OperationCode;
 import com.google.gson.Gson;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -30,50 +31,56 @@ public class AuthorizationController {
 
     @FXML
     private void onLoginButtonClick() {
-        info.setText("");
-        if (checkProblems())
-            return;
+        setInfo("");
 
-        // Собираем сообщение для отправки
-        HashMap<String, String> data = new HashMap<>();
-        data.put("code", OperationCode.LOGIN.stringValue());
-        data.put("username", login_tf.getText());
-        data.put("password", password_tf.getText());
+        new Thread(() -> {
+            if (checkProblems())
+                return;
 
-        // Отправляем сообщение и ждём ответ
-        try {
-            serverConnector.sendMessage(gson.toJson(data));
-        } catch (IOException e) {
-            info.setText("Нет соединения с сервером");
-            serverConnector.setConnected(false);
-        }
-        info.setText("Ждём ответ от сервера...");
-        serverConnector.setUsername(login_tf.getText());
-        checkMessage();
+            // Собираем сообщение для отправки
+            HashMap<String, String> data = new HashMap<>();
+            data.put("code", OperationCode.LOGIN.stringValue());
+            data.put("username", login_tf.getText());
+            data.put("password", password_tf.getText());
+
+            // Отправляем сообщение и ждём ответ
+            try {
+                serverConnector.sendMessage(gson.toJson(data));
+            } catch (IOException e) {
+                setInfo("Нет соединения с сервером");
+                serverConnector.setConnected(false);
+            }
+            setInfo("Ждём ответ от сервера...");
+            serverConnector.setUsername(login_tf.getText());
+            checkMessage();
+        }).start();
     }
 
     @FXML
     private void onRegisterButtonClick() {
-        info.setText("");
-        if (checkProblems())
-            return;
+        setInfo("");
 
-        // Собираем сообщение для отправки
-        HashMap<String, String> data = new HashMap<>();
-        data.put("code", OperationCode.REGISTRATION.stringValue());
-        data.put("username", login_tf.getText());
-        data.put("password", password_tf.getText());
+        new Thread(() -> {
+            if (checkProblems())
+                return;
 
-        // Отправляем сообщение и ждём ответ
-        try {
-            serverConnector.sendMessage(gson.toJson(data));
-        } catch (IOException e) {
-            info.setText("Нет соединения с сервером");
-            serverConnector.setConnected(false);
-        }
-        info.setText("Ждём ответ от сервера...");
-        serverConnector.setUsername(login_tf.getText());
-        checkMessage();
+            // Собираем сообщение для отправки
+            HashMap<String, String> data = new HashMap<>();
+            data.put("code", OperationCode.REGISTRATION.stringValue());
+            data.put("username", login_tf.getText());
+            data.put("password", password_tf.getText());
+
+            // Отправляем сообщение и ждём ответ
+            try {
+                serverConnector.sendMessage(gson.toJson(data));
+            } catch (IOException e) {
+                setInfo("Нет соединения с сервером");
+                serverConnector.setConnected(false);
+            }
+            setInfo("Ждём ответ от сервера...");
+            serverConnector.setUsername(login_tf.getText());
+            checkMessage();
+        }).start();
     }
 
     /**
@@ -81,33 +88,34 @@ public class AuthorizationController {
      */
     private boolean checkProblems() {
         if (serverConnector.isConnected()) {
-            info.setText("");
+            setInfo("");
         } else {
-            info.setText("Нет соединения с сервером");
+            setInfo("Нет соединения с сервером");
             try {
-                serverConnector.reconnect();
+                serverConnector.finish();
+                serverConnector.connect();
                 serverConnector.setConnected(true);
             } catch (IOException e) {
-                info.setText("Сервер недоступен");
+                setInfo("Сервер недоступен");
                 return true;
             }
         }
 
         // При пустых полях ничего происходить не должно
         if (login_tf.getText().isEmpty() || password_tf.getText().isEmpty()) {
-            info.setText("Не введён логин или пароль!");
+            setInfo("Не введён логин или пароль!");
             return true;
         }
 
         // Ограничение на длину логина и пароля
         if (login_tf.getText().length() > 10 || password_tf.getText().length() > 10) {
-            info.setText("Логин и пароль должны быть длиннее 10 символов");
+            setInfo("Логин и пароль должны быть длиннее 10 символов");
             return true;
         }
 
         // Запрет на ввод пробелов
         if (login_tf.getText().contains(" ") || password_tf.getText().contains(" ")) {
-            info.setText("Логин и пароль не должны содержать пробелов");
+            setInfo("Логин и пароль не должны содержать пробелов");
             return true;
         }
 
@@ -124,7 +132,7 @@ public class AuthorizationController {
         try {
             answer = serverConnector.checkMessage();
         } catch (IOException e) {
-            info.setText("Нет соединения с сервером");
+            setInfo("Нет соединения с сервером");
             serverConnector.setConnected(false);
         }
 
@@ -136,12 +144,18 @@ public class AuthorizationController {
         switch (OperationCode.fromValue(data.get("code"))) {
             case ACCESS_GRANTED:
                 serverConnector.setAuthorized(true);
-                Stage stage = (Stage) info.getScene().getWindow();
-                stage.close();
+                Platform.runLater(() -> {
+                    Stage stage = (Stage) info.getScene().getWindow();
+                    stage.close();
+                });
                 break;
             case ACCESS_DENIED:
-                info.setText(data.get("body"));
+                setInfo(data.get("body"));
                 break;
         }
+    }
+
+    private void setInfo(String message) {
+        Platform.runLater(() -> info.setText(message));
     }
 }

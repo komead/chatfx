@@ -67,6 +67,7 @@ public class MainController {
             try {
                 receivedMessage = serverConnector.checkMessage();
                 messageMap = gson.fromJson(receivedMessage, HashMap.class);
+                setInfo("");
 
                 switch (OperationCode.fromValue(messageMap.get("code"))) {
                     case USERS_LIST:
@@ -84,9 +85,7 @@ public class MainController {
                         break;
                 }
             } catch (IOException e) {
-                Platform.runLater(() -> {
-                    info.setText("Ошибка подключения к серверу");
-                });
+                setInfo("Ошибка подключения к серверу");
 
                 serverConnector.setConnected(false);
             }
@@ -105,13 +104,18 @@ public class MainController {
     public void initialize() {
         itemsList = users_vb.getChildren();
 
-        try {
-            serverConnector.connect();
-        } catch (IOException e) {
-            info.setText("Не удалось установить соединение с сервером");
+        if (!serverConnector.isConnected()) {
+            try {
+                serverConnector.connect();
+            } catch (IOException e) {
+                setInfo("Не удалось установить соединение с сервером");
+            }
         }
 
         authorize();
+
+        if (serverConnector.isAuthorized())
+            setInfo("");
     }
 
     /**
@@ -159,9 +163,12 @@ public class MainController {
                 byte[] imageData = Files.readAllBytes(selectedFile.toPath());
                 HashMap<String, String> map = new HashMap<>();
                 map.put("code", OperationCode.IMAGE.stringValue());
+                map.put("sender", serverConnector.getUsername());
                 map.put("receivers", "");
                 map.put("image", Base64.getEncoder().encodeToString(imageData));
                 serverConnector.sendMessage(gson.toJson(map));
+
+                setInfo("");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -247,21 +254,22 @@ public class MainController {
      */
     private void sendMessage(String receiver, String message) {
         if (!message.isEmpty()) {
-            HashMap<String, String> data = new HashMap<>();
-            data.put("code", OperationCode.MESSAGE.stringValue());
-            data.put("text", message);
-            data.put("receivers", receiver);
-            data.put("sender" , serverConnector.getUsername());
+            new Thread(() -> {
+                HashMap<String, String> data = new HashMap<>();
+                data.put("code", OperationCode.MESSAGE.stringValue());
+                data.put("text", message);
+                data.put("receivers", receiver);
+                data.put("sender" , serverConnector.getUsername());
 
-            try {
-                serverConnector.sendMessage(gson.toJson(data));
-            } catch (IOException e) {
-                serverConnector.setConnected(false);
-                Platform.runLater(() -> {
-                    info.setText("Нет соединения с сервером");
-                });
-                reconnect();
-            }
+                try {
+                    serverConnector.sendMessage(gson.toJson(data));
+                    setInfo("");
+                } catch (IOException e) {
+                    serverConnector.setConnected(false);
+                    setInfo("Нет соединения с сервером");
+                    reconnect();
+                }
+            }).start();
         }
     }
 
@@ -290,29 +298,40 @@ public class MainController {
     }
 
     private void messageAction(String sender, String receivers, String message) {
-        String prefix;
-        HashSet<String> receiver = new HashSet<>();
-        Collections.addAll(receiver, receivers.split(","));
+        new Thread(() -> {
+            HashSet<String> receiver = new HashSet<>();
+            Collections.addAll(receiver, receivers.split(","));
+
+            Text text = new Text();
+            text.setText(getPrefix(sender, receiver) + message);
+
+            Platform.runLater(() -> {
+                output_vb.getChildren().add(text);
+            });
+
+            pause(100);
+            // Прокрутка вниз
+            Platform.runLater(() -> scrollPane.setVvalue(1.0));
+        }).start();
+    }
+
+    private String getPrefix(String sender, HashSet<String> receivers) {
+        StringBuilder prefix = new StringBuilder();
 
         // Проверяем от кого пришло сообщение и добавляем приписку перед сообщением
         if (sender.equals(serverConnector.getUsername())) {
-            prefix = "You";
+            prefix.append("You");
         } else {
-            prefix = sender;
+            prefix.append(sender);
         }
 
         // Проверяем кому адресовано сообщение
-        Text text = new Text();
-        if (receiver.contains(serverConnector.getUsername()) && !sender.equals(serverConnector.getUsername())) {
-            text.setText(prefix + " send you: " + message);
+        if (receivers != null && receivers.contains(serverConnector.getUsername()) && !sender.equals(serverConnector.getUsername())) {
+            prefix.append(" send you: ");
         } else {
-            text.setText(prefix + ": " + message);
+            prefix.append(": ");
         }
-
-        Platform.runLater(() -> {
-            output_vb.getChildren().add(text);
-            scrollPane.setVvalue(1.0); // Прокрутка вниз
-        });
+        return prefix.toString();
     }
 
     private void usersListAction(String usersList) {
@@ -327,39 +346,44 @@ public class MainController {
     }
 
     private void imageAction(HashMap<String, String> map) {
-        // Извлечение данных из строки и создание картинки
-        byte[] imageData = Base64.getDecoder().decode(map.get("image"));
-        Image image = new Image(new ByteArrayInputStream(imageData));
-        ImageView imageView = new ImageView(image);
+        new Thread(() -> {
+            // Извлечение данных из строки и создание картинки
+            byte[] imageData = Base64.getDecoder().decode(map.get("image"));
+            Image image = new Image(new ByteArrayInputStream(imageData));
+            ImageView imageView = new ImageView(image);
 
-        // Масштабируем картинку до определённой ширины
-        double originalWidth = image.getWidth();
-        double originalHeight = image.getHeight();
-        double newWidth = 200;
+            // Масштабируем картинку до определённой ширины
+            double originalWidth = image.getWidth();
+            double originalHeight = image.getHeight();
+            double newWidth = 400;
 
-        imageView.setFitWidth(newWidth);
-        imageView.setFitHeight(newWidth / originalWidth * originalHeight);
+            imageView.setFitWidth(newWidth);
+            imageView.setFitHeight(newWidth / originalWidth * originalHeight);
 
-        // Добавляем картинку в чат
-        Platform.runLater(() -> {
-            output_vb.getChildren().add(imageView);
-            scrollPane.setVvalue(1.0); // Прокрутка вниз
-        });
+            // Добавляем картинку в чат
+            Platform.runLater(() -> {
+                output_vb.getChildren().add(new Text(getPrefix(map.get("sender"), null)));
+                output_vb.getChildren().add(imageView);
+            });
+
+            pause(100);
+            // Прокрутка вниз
+            Platform.runLater(() -> scrollPane.setVvalue(1.0));
+        }).start();
     }
 
     private void reconnect() {
-        try {
-            serverConnector.reconnect();
-            serverConnector.setConnected(true);
+        new Thread(() -> {
+            try {
+                serverConnector.reconnect();
+                serverConnector.setConnected(true);
 
-            Platform.runLater(() -> info.setText(""));
-        } catch (IOException e) {
-            serverConnector.setConnected(true);
-
-            Platform.runLater(() -> {
-                info.setText("Сервер недоступен");
-            });
-        }
+                setInfo("");
+            } catch (IOException e) {
+                serverConnector.setConnected(true);
+                setInfo("Сервер недоступен");
+            }
+        }).start();
     }
 
     private void pause(int millis) {
@@ -368,5 +392,9 @@ public class MainController {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private void setInfo(String message) {
+        Platform.runLater(() -> info.setText(message));
     }
 }
