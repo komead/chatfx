@@ -19,6 +19,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.ByteArrayInputStream;
@@ -151,6 +152,7 @@ public class MainController {
 
     @FXML
     private void onUploadButtonClick() {
+        // Открываем окно выбора файлов
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Выберите изображение");
         // Устанавливаем фильтры для изображений
@@ -160,12 +162,23 @@ public class MainController {
             try {
                 // Читаем файл в массив байтов
                 byte[] imageData = Files.readAllBytes(selectedFile.toPath());
-                HashMap<String, String> map = new HashMap<>();
-                map.put("code", OperationCode.IMAGE.stringValue());
-                map.put("sender", serverConnector.getUsername());
-                map.put("receivers", "");
-                map.put("image", Base64.getEncoder().encodeToString(imageData));
-                serverConnector.sendMessage(gson.toJson(map));
+
+                // Открываем окно просмотра картинки
+                FXMLLoader loader = new FXMLLoader(HelloApplication.class.getResource("imagePreview-view.fxml"));
+                Parent root = loader.load();
+
+                ImagePreviewController controller = loader.getController();
+                controller.setImage(imageData);
+
+                Stage stage = new Stage();
+                stage.setResizable(false);
+                controller.setStage(stage);
+
+                stage.setScene(new Scene(root));
+                stage.setTitle("Просмотр изображения");
+                stage.initModality(Modality.WINDOW_MODAL); // Блокируем родительское окно
+                stage.initOwner(output_vb.getScene().getWindow()); // Устанавливаем родительское окно
+                stage.show();
 
                 setInfo("");
             } catch (IOException e) {
@@ -355,7 +368,7 @@ public class MainController {
             // Масштабируем картинку до определённой ширины
             double originalWidth = image.getWidth();
             double originalHeight = image.getHeight();
-            double newWidth = 400;
+            double newWidth = 500;
 
             imageView.setFitWidth(newWidth);
             imageView.setFitHeight(newWidth / originalWidth * originalHeight);
