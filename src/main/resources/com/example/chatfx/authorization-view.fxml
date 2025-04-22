@@ -41,9 +41,6 @@
       <VBox.margin>
          <Insets bottom="10.0" top="10.0" />
       </VBox.margin>
-      <font>
-         <Font size="14.0" />
-      </font>
    </Label>
    <HBox alignment="CENTER" spacing="30.0">
       <children>

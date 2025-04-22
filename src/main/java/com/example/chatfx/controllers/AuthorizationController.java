@@ -109,13 +109,13 @@ public class AuthorizationController {
 
         // Ограничение на длину логина и пароля
         if (login_tf.getText().length() > 10 || password_tf.getText().length() > 10) {
-            setInfo("Логин и пароль должны быть длиннее 10 символов");
+            setInfo("Логин или пароль длиннее 10 символов");
             return true;
         }
 
         // Запрет на ввод пробелов
         if (login_tf.getText().contains(" ") || password_tf.getText().contains(" ")) {
-            setInfo("Логин и пароль не должны содержать пробелов");
+            setInfo("Логин или пароль содержит пробелы");
             return true;
         }
 
